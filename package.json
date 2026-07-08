@@ -1,0 +1,15 @@
+{
+  "name": "emergenciasmp",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@8.8.0",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "pnpm -C backend dev & pnpm -C frontend dev",
+    "build": "pnpm -C backend build && pnpm -C frontend build",
+    "start": "pnpm -C backend start"
+  }
+}

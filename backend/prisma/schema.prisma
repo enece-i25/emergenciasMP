@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+enum RoleType {
+  PRODUCTOR
+  INSPECTOR
+  ADMINISTRADOR
+}
+
+enum EstadoUsuario {
+  PENDIENTE
+  ACTIVO
+  INACTIVO
+}
+
+enum TipoPersona {
+  FISICA
+  JURIDICA
+}
+
+enum TipoDocumento {
+  DNI
+  LC
+  LE
+  PASAPORTE
+  OTRO
+}
+
+enum Sexo {
+  M
+  F
+}
+
+enum Provincia {
+  BUENOS_AIRES
+  CATAMARCA
+  CHACO
+  CORDOBA
+  SANTA_FE
+  OTRO
+}
+
+enum Tenencia {
+  PROPIETARIO
+  SUCESION_INDIVISA
+  ARRENDATARIO
+  APARCERIA
+  CONTRATO_ACCIDENTAL
+  OCUPACION_CON_PERMISO
+  OCUPACION_DE_HECHO
+  OCUPACION_GRATUITA
+  OTROS
+}
+
+enum ActividadEnum {
+  AGRICULTURA
+  GANADERIA
+  FORESTAL
+  CULTIVOS_BAJO_COBERTURA
+  APICULTURA
+  OTROS
+}
+
+enum ActividadTipo {
+  AG
+  GA
+  BM
+  HO
+  MA
+  MF
+  MG
+  MH
+  OT
+}
+
+enum EventoTipo {
+  INUNDACION
+  SEQUIA
+  INCENDIO
+  GRANIZO
+  HELADA
+  VIENTO
+  EXCESO_HIDRICO
+  OTRO
+}
+
+enum EventoEstado {
+  BORRADOR
+  RELEVAMIENTO_ABIERTO
+  CERRADO
+}
+
+enum DeclaracionEstado {
+  BORRADOR
+  PRESENTADA
+}
+
+model Usuario {
+  id               String      @id @default(cuid())
+  email            String      @unique
+  role             RoleType    @default(PRODUCTOR)
+  estado           EstadoUsuario @default(PENDIENTE)
+  creado_en        DateTime    @default(now())
+  profileCompleted Boolean     @default(false)
+  productorProfile ProductorProfile?
+  createdEvents    Evento[]
+  observaciones    Observacion[]
+}
+
+model ProductorProfile {
+  id                        String   @id @default(cuid())
+  apellidoNombreORazonSocial String   @db.VarChar(60)
+  tipoPersona               TipoPersona
+  tipoDocumento             TipoDocumento
+  numeroDocumento           String   @db.VarChar(8)
+  sexo                      Sexo?
+  cuitCuil                  String   @unique @db.VarChar(11)
+
+  pais                      String   @default("Argentina")
+  provincia                 Provincia
+  departamento              String
+  municipio                 String?
+  paraje                   String?
+  seccion                  String?
+  codigoPostal             String?
+  barrio                   String?
+  calleRuta                String?
+  numeroKm                 String?
+  sectorBloque             String?
+  torrePiso                String?
+  manzana                  String?
+  casa                     String?
+
+  telefono1                String
+  telefono2                String?
+  telefono3                String?
+
+  userId                   String   @unique
+  user                     Usuario  @relation(fields: [userId], references: [id])
+
+  predios                  Predio[]
+  ddjjs                    DeclaracionJurada[]
+}
+
+model Predio {
+  id                    String   @id @default(cuid())
+  productorProfileId    String?
+  codigoAdrema          String
+  tenencia              Tenencia
+  departamento          String
+  municipio             String?
+  observaciones         String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  productorProfile      ProductorProfile? @relation(fields: [productorProfileId], references: [id])
+  actividades           ActividadProductiva[]
+  declaracionJuradaId   String?
+  declaracionJurada     DeclaracionJurada? @relation(fields: [declaracionJuradaId], references: [id])
+}
+
+model ActividadProductiva {
+  id                  String         @id @default(cuid())
+  predioId            String
+  actividad           ActividadEnum
+  tipo                ActividadTipo
+  renspa              String?
+  superficieHa        Decimal
+  gpsPoligono         Json?
+
+  predio              Predio         @relation(fields: [predioId], references: [id])
+  declaracionActividades DeclaracionActividad[]
+}
+
+model Evento {
+  id           String      @id @default(cuid())
+  tipo         EventoTipo
+  denominacion String
+  fechaInicio  DateTime
+  fechaFin     DateTime?
+  lugar        String
+  estado       EventoEstado @default(BORRADOR)
+  createdById  String
+
+  createdBy    Usuario     @relation(fields: [createdById], references: [id])
+  ddjjs        DeclaracionJurada[]
+}
+
+model DeclaracionJurada {
+  id                    String   @id @default(cuid())
+  productorProfileId    String
+  eventoId              String?
+  estado                DeclaracionEstado
+  fechaPresentacion     DateTime?
+  observaciones         String?
+
+  productorProfile      ProductorProfile @relation(fields: [productorProfileId], references: [id])
+  evento                Evento?          @relation(fields: [eventoId], references: [id])
+  predios               Predio[]
+  declaracionActividades DeclaracionActividad[]
+  observacionesInspector Observacion[]
+
+  @@unique([productorProfileId, eventoId])
+}
+
+model DeclaracionActividad {
+  id                      String   @id @default(cuid())
+  declaracionJuradaId     String
+  actividadProductivaId   String
+  superficieAfectadaHa    Decimal?
+  descripcionDano         String
+  porcentajeEstimado      Int?
+
+  declaracionJurada       DeclaracionJurada @relation(fields: [declaracionJuradaId], references: [id])
+  actividadProductiva     ActividadProductiva @relation(fields: [actividadProductivaId], references: [id])
+}
+
+model Observacion {
+  id          String   @id @default(cuid())
+  declaracionJuradaId String
+  id_usuario  String
+  comentario  String
+  fecha       DateTime @default(now())
+
+  declaracionJurada DeclaracionJurada @relation(fields: [declaracionJuradaId], references: [id])
+  usuario     Usuario  @relation(fields: [id_usuario], references: [id])
+}
